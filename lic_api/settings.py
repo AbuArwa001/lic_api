@@ -48,6 +48,7 @@ ALLOWED_HOSTS = [
     'diatomaceous-preventively-amber.ngrok-free.dev',
     'localhost',
     '127.0.0.1',
+    'langata-islamic-center.vercel.app'
     '[::1]',
 ]
 
