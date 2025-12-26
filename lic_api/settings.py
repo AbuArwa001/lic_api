@@ -50,7 +50,7 @@ ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
     'langata-islamic-center.vercel.app',
-    'liwomasjid.co.ke'
+    'liwomasjid.co.ke',
     '[::1]',
 ]
 
@@ -169,7 +169,7 @@ REST_FRAMEWORK = {
 }
 
 # CORS Configuration
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
