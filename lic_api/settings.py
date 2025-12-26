@@ -34,6 +34,13 @@ STATICFILES_DIRS = [
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = getenv('SECRET_KEY')
 
+
+# URL to access media via browser
+MEDIA_URL = 'media/'
+
+# Absolute path to the folder on the server
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
