@@ -45,12 +45,14 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEBUG = True
 
 ALLOWED_HOSTS = [
+    '54.161.31.236',
     'diatomaceous-preventively-amber.ngrok-free.dev',
     'localhost',
     '127.0.0.1',
-    'langata-islamic-center.vercel.app'
+    'langata-islamic-center.vercel.app',
     '[::1]',
 ]
+
 
 
 # Application definition
