@@ -19,12 +19,19 @@ load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# 1. The URL to use when referring to static files
+STATIC_URL = 'static/'
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
+# 2. The absolute path to the directory where collectstatic will collect static files for deployment.
+# On your server, this will be /home/ubuntu/lic_api/staticfiles
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
+# 3. Extra places for collectstatic to find static files (like your frontend build)
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-frwf=e-74%x55_mz)*=#4ij%*#xzz=5sx^)6zna(n170#71-fl'
+SECRET_KEY = getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
