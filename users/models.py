@@ -10,6 +10,7 @@ import uuid
 #     updated_at = models.DateTimeField(auto_now=True)
 
 class User(AbstractUser):
+    REQUIRED_FIELDS = ['email', 'name']
     ROLE_CHOICES = [
         ('admin', 'Admin'),
         ('user', 'User'),
