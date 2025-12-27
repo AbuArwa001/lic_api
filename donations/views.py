@@ -1,3 +1,4 @@
+import requests
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -66,6 +67,30 @@ class DonationViewSet(viewsets.ModelViewSet):
             return Response(response)
         
         return Response({"error": "Invalid payment method"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['post'])
+    def capture_paypal_payment(self, request):
+        order_id = request.data.get('orderID')
+        client = PayPalClient()
+        token = client.get_access_token()
+        
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        }
+        
+        # Verify the payment with PayPal
+        url = f"{client.base_url}/v2/checkout/orders/{order_id}/capture"
+        response = requests.post(url, headers=headers)
+        
+        if response.status_code == 201:
+            # Update your database
+            donation = Donation.objects.get(transaction_id=order_id)
+            donation.status = 'completed'
+            donation.save()
+            return Response({"status": "COMPLETED"})
+        
+        return Response({"error": "Failed to capture payment"}, status=400)
 
 class PaymentAccountViewSet(viewsets.ModelViewSet):
     queryset = PaymentAccount.objects.all()
