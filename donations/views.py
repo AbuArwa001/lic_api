@@ -11,7 +11,8 @@ from .paystack import PaystackClient
 class DonationViewSet(viewsets.ModelViewSet):
     queryset = Donation.objects.all()
     serializer_class = DonationSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.AllowAny]
+    authentication_classes = []
 
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:
@@ -19,7 +20,7 @@ class DonationViewSet(viewsets.ModelViewSet):
         else:
             serializer.save()
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], )
     def initiate_payment(self, request):
         method = request.data.get('payment_method')
         amount = request.data.get('amount')
