@@ -201,3 +201,8 @@ MPESA_CALLBACK_URL = getenv('MPESA_CALLBACK_URL')
 # Attempt to get Live keys, fallback to Test keys, then fallback to None
 STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY') or os.getenv('TEST_STRIPE_PUBLISHABLE_KEY')
 STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY') or os.getenv('TEST_STRIPE_SECRET_KEY')
+
+# PayPal Configuration
+PAYPAL_CLIENT_ID = getenv('PAYPAL_CLIENT_ID')
+PAYPAL_CLIENT_SECRET = getenv('PAYPAL_CLIENT_SECRET')
+PAYPAL_MODE = getenv('PAYPAL_MODE', 'sandbox')

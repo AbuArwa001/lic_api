@@ -59,8 +59,11 @@ class DonationViewSet(viewsets.ModelViewSet):
             return Response(response)
         elif method == 'paypal':
             client = PayPalClient()
-            response = client.create_payment(amount)
-            return Response(response)
+            try:
+                order_data = client.create_order(amount)
+                return Response({"id": order_data['id']})
+            except Exception as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         elif method == 'paystack':
             client = PaystackClient()
             response = client.initialize_transaction(email, amount)
@@ -72,23 +75,39 @@ class DonationViewSet(viewsets.ModelViewSet):
     def capture_paypal_payment(self, request):
         order_id = request.data.get('orderID')
         client = PayPalClient()
-        token = client.get_access_token()
         
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {token}",
-        }
-        
-        # Verify the payment with PayPal
-        url = f"{client.base_url}/v2/checkout/orders/{order_id}/capture"
-        response = requests.post(url, headers=headers)
-        
-        if response.status_code == 201:
-            # Update your database
-            donation = Donation.objects.get(transaction_id=order_id)
-            donation.status = 'completed'
-            donation.save()
-            return Response({"status": "COMPLETED"})
+        try:
+            capture_data = client.capture_payment(order_id)
+            
+            if capture_data['status'] == 'COMPLETED':
+                # Update your database
+                # Note: We might want to find the donation by order_id if we stored it during initiate
+                # But currently initiate doesn't store for PayPal, so we might need to create it here or handle it differently.
+                # For now, let's assume we create it here or find it if we change the flow.
+                # Given the current flow, we probably want to create the donation record here if it doesn't exist,
+                # or update it if we stored the order_id.
+                
+                # Let's check if we can find a donation with this transaction_id, if not create one.
+                # But wait, initiate_payment didn't create a donation for PayPal.
+                # We should probably create it here.
+                
+                donation, created = Donation.objects.get_or_create(
+                    transaction_id=order_id,
+                    defaults={
+                        'user': request.user if request.user.is_authenticated else None,
+                        'amount': capture_data['purchase_units'][0]['payments']['captures'][0]['amount']['value'],
+                        'payment_method': 'paypal',
+                        'status': 'completed'
+                    }
+                )
+                
+                if not created:
+                    donation.status = 'completed'
+                    donation.save()
+                    
+                return Response({"status": "COMPLETED", "donation_id": donation.id})
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
         return Response({"error": "Failed to capture payment"}, status=400)
 

@@ -6,3 +6,7 @@ __pycache__/
 migrations
 api.http
 db.sqlite3
+staticfiles
+static
+media
+
