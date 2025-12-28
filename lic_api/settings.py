@@ -47,7 +47,6 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 ALLOWED_HOSTS = [
     '54.161.31.236',
     'diatomaceous-preventively-amber.ngrok-free.dev',
-    'langataislamiccenter.org',
     'localhost',
     '127.0.0.1',
     'langata-islamic-center.vercel.app',
@@ -177,6 +176,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://langataislamiccenter.org",
     "https://www.langataislamiccenter.org",
     "https://liwomasjid.co.ke",
+    "https://langata-islamic-center.vercel.app",
 ]
 # CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
