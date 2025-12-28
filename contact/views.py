@@ -1,13 +1,15 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, permissions
 from rest_framework.response import Response
 from django.core.mail import send_mail
 from django.conf import settings
 from .models import ContactMessage
 from .serializers import ContactMessageSerializer
+from rest_framework.permissions import AllowAny
 
 class ContactMessageViewSet(viewsets.ModelViewSet):
     queryset = ContactMessage.objects.all()
     serializer_class = ContactMessageSerializer
+    permission_classes = [AllowAny]
 
     def perform_create(self, serializer):
         instance = serializer.save()

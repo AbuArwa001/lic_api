@@ -5,13 +5,16 @@ from django.db.models import Sum
 class ProjectSerializer(serializers.ModelSerializer):
     total_donated = serializers.SerializerMethodField()
     progress_percentage = serializers.SerializerMethodField()
-
+    goal_amount = serializers.IntegerField(required=False)
+    start_date = serializers.DateField(required=False)
+    end_date = serializers.DateField(required=False)
     class Meta:
         model = Project
         fields = [
             'id', 'name', 'goal_amount', 'status', 
             'start_date', 'end_date', 'image', 'total_donated', 'progress_percentage'
         ]
+        
 
     def get_total_donated(self, obj):
         # Calculate sum dynamically from related donations

@@ -8,12 +8,21 @@ from .mpesa import MpesaClient
 from .paypal import PayPalClient
 from .stripe import StripeClient
 from .paystack import PaystackClient
+from .permissions import IsAdminOrReadOnly, IsAdminUser, AllowAll, IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 class DonationViewSet(viewsets.ModelViewSet):
     queryset = Donation.objects.all()
     serializer_class = DonationSerializer
-    permission_classes = [permissions.AllowAny]
-    authentication_classes = []
+    permission_classes = [AllowAll]
+    authentication_classes = [JWTAuthentication]
+
+    def get_permissions(self):
+        if self.action in ['destroy']:
+            return [IsAdminUser()]
+        elif self.action in ['retrieve', 'update', 'partial_update', 'create']:
+            return [AllowAll()]
+        return [IsAuthenticated()]
 
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:

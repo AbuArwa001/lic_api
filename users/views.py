@@ -1,6 +1,7 @@
 from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework import viewsets
 from .serializers import UserSerializer, RegisterSerializer
 from .models import User
 
@@ -15,3 +16,6 @@ class UserProfileView(APIView):
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
+class UserView(viewsets.ModelViewSet):
+    queryset = User.objects.order_by('-registered_at')
+    serializer_class = UserSerializer
