@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     'donations',
     'ratings',
     'contact',
+    'storages',
 ]
 
 MIDDLEWARE = [
@@ -206,3 +207,25 @@ STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY') or os.getenv('TEST_STRIPE_SEC
 PAYPAL_CLIENT_ID = getenv('PAYPAL_CLIENT_ID')
 PAYPAL_CLIENT_SECRET = getenv('PAYPAL_CLIENT_SECRET')
 PAYPAL_MODE = getenv('PAYPAL_MODE', 'sandbox')
+
+# AWS S3 Configuration
+AWS_ACCESS_KEY_ID = getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = getenv('AWS_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = getenv('AWS_STORAGE_BUCKET_NAME')
+AWS_S3_REGION_NAME = getenv('AWS_S3_REGION_NAME')
+AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+AWS_S3_OBJECT_PARAMETERS = {
+    'CacheControl': 'max-age=86400',
+}
+AWS_DEFAULT_ACL = None
+
+# Use S3 for static and media storage
+# Tell Django to use S3 for Media files
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}

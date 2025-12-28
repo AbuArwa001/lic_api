@@ -65,6 +65,33 @@ class MpesaClient(viewsets.ViewSet):
             print(f"Unexpected error: {e}")
             return None
 
+    def get_balance(self):
+        """
+        Initiate Account Balance Query.
+        Note: This is async and result comes to callback.
+        For dashboard display, we might need to store the latest balance in DB or use a different approach.
+        """
+        try:
+            access_token = self.get_access_token()
+            if not access_token:
+                return {"error": "Failed to get access token"}
+
+            url = f"{self.base_url}/mpesa/accountbalance/v1/query"
+            
+            # Use a dummy initiator password for sandbox if not provided
+            initiator = "testapi" # Sandbox default
+            security_credential = "..." # Needs to be generated properly with cert
+            
+            # For now, return a placeholder or error since we lack SecurityCredential generation logic here
+            # which requires a certificate.
+            return {"error": "M-Pesa Balance Query requires Security Credential generation (Certificate)"}
+            
+        except Exception as e:
+            return {"error": str(e)}
+
+    def get_transactions(self):
+        return [] # Not directly supported via simple API
+
     @action(detail=False, methods=["post"], url_path="stk-push")
     def stk_push(self, request):
         try:

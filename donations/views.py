@@ -120,7 +120,73 @@ class DonationViewSet(viewsets.ModelViewSet):
         
         return Response({"error": "Failed to capture payment"}, status=400)
 
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        from django.db.models import Sum, Count
+        from projects.models import Project
+
+        total_donations = Donation.objects.filter(status='completed').aggregate(Sum('amount'))['amount__sum'] or 0
+        active_projects = Project.objects.filter(status='ongoing').count()
+        # Count unique users who have donated. 
+        # Note: This counts authenticated users. Anonymous donations are counted but not as unique "donors" if we only check 'user'.
+        # If we want to count anonymous transactions as donors, we might just count total transactions or distinct transaction_ids.
+        # For now, let's count distinct users + count of anonymous donations? 
+        # Or just stick to the plan: distinct users.
+        total_donors = Donation.objects.filter(status='completed').values('user').distinct().count()
+
+        recent_donations = Donation.objects.filter(status='completed').order_by('-donation_date')[:5]
+        recent_serializer = DonationSerializer(recent_donations, many=True)
+
+        return Response({
+            "total_donations": total_donations,
+            "active_projects": active_projects,
+            "total_donors": total_donors,
+            "recent_donations": recent_serializer.data
+        })
+
 class PaymentAccountViewSet(viewsets.ModelViewSet):
     queryset = PaymentAccount.objects.all()
     serializer_class = PaymentAccountSerializer
     permission_classes = [permissions.IsAdminUser]
+
+    @action(detail=True, methods=['get'])
+    def balance(self, request, pk=None):
+        account = self.get_object()
+        
+        if account.account_type == 'card': # Stripe
+            client = StripeClient()
+            balance = client.get_balance()
+            return Response(balance)
+            
+        elif account.account_type == 'paypal':
+            client = PayPalClient()
+            balance = client.get_balance()
+            return Response(balance)
+            
+        elif account.account_type == 'paybill': # M-Pesa
+            client = MpesaClient()
+            balance = client.get_balance()
+            return Response(balance)
+            
+        return Response({"error": "Balance check not supported for this account type"}, status=400)
+
+    @action(detail=True, methods=['get'])
+    def transactions(self, request, pk=None):
+        account = self.get_object()
+        
+        if account.account_type == 'card': # Stripe
+            client = StripeClient()
+            transactions = client.get_transactions()
+            return Response(transactions)
+            
+        elif account.account_type == 'paypal':
+            client = PayPalClient()
+            transactions = client.get_transactions()
+            return Response(transactions)
+            
+        elif account.account_type == 'paybill': # M-Pesa
+            client = MpesaClient()
+            transactions = client.get_transactions()
+            return Response(transactions)
+            
+        return Response({"error": "Transactions not supported for this account type"}, status=400)

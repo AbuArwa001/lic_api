@@ -20,3 +20,21 @@ class Project(models.Model):
 
     def __str__(self):
         return self.name
+
+def project_image_path(instance, filename):
+    # projects/<slug>/<filename>
+    # Since we don't have a slug field, we'll use the project name (sanitized) or ID
+    # Let's use ID for safety and uniqueness, or name if preferred. 
+    # User asked for: "projects/revert_center/revert_1.jpg"
+    # So we should try to use a slugified name.
+    import re
+    slug = re.sub(r'[^a-z0-9]', '_', instance.project.name.lower())
+    return f'projects/{slug}/{filename}'
+
+class ProjectImage(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='images')
+    image = models.ImageField(upload_to=project_image_path)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Image for {self.project.name}"
