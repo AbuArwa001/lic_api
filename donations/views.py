@@ -18,11 +18,13 @@ class DonationViewSet(viewsets.ModelViewSet):
     authentication_classes = [JWTAuthentication]
 
     def get_permissions(self):
-        if self.action in ['destroy']:
-            return [IsAdminUser()]
-        elif self.action in ['retrieve', 'update', 'partial_update', 'create']:
-            return [AllowAll()]
-        return [IsAuthenticated()]
+        if self.action == 'destroy':
+            return [permissions.IsAdminUser()]
+        
+        if self.action in ['initiate_payment', 'capture_paypal_payment', 'create', 'retrieve']:
+            return [permissions.AllowAny()]
+            
+        return [permissions.IsAuthenticatedOrReadOnly()]
 
     def perform_create(self, serializer):
         if self.request.user.is_authenticated:
@@ -30,7 +32,7 @@ class DonationViewSet(viewsets.ModelViewSet):
         else:
             serializer.save()
 
-    @action(detail=False, methods=['post'], )
+    @action(detail=False, methods=['post'], authentication_classes=[])
     def initiate_payment(self, request):
         method = request.data.get('payment_method')
         amount = request.data.get('amount')

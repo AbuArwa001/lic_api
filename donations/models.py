@@ -19,7 +19,7 @@ class Donation(models.Model):
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
     is_anonymous = models.BooleanField(default=False)
     transaction_id = models.CharField(max_length=100, unique=True, null=True, blank=True)
-    status = models.CharField(max_length=20, default='pending') # pending, completed, failed
+    status = models.CharField(max_length=20, default='pending')
 
     def __str__(self):
         return f"{self.amount} to {self.project.name}"
