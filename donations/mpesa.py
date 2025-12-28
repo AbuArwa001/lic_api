@@ -92,6 +92,46 @@ class MpesaClient(viewsets.ViewSet):
     def get_transactions(self):
         return [] # Not directly supported via simple API
 
+    def b2c_payment(self, amount, phone_number, remarks="Withdrawal"):
+        """
+        Initiate B2C Payment (Business to Customer) - e.g. Salary, Withdrawal
+        """
+        try:
+            access_token = self.get_access_token()
+            if not access_token:
+                return {"error": "Failed to get access token"}
+
+            # Format phone number
+            if phone_number.startswith("0"):
+                phone_number = "254" + phone_number[1:]
+            elif phone_number.startswith("+"):
+                phone_number = phone_number[1:]
+
+            url = f"{self.base_url}/mpesa/b2c/v1/paymentrequest"
+            
+            # Note: B2C also requires SecurityCredential (encrypted password)
+            # For this demo/task, we'll simulate the structure but it will fail without real certs
+            
+            payload = {
+                "InitiatorName": "testapi",
+                "SecurityCredential": "...", # Requires cert encryption
+                "CommandID": "BusinessPayment",
+                "Amount": int(amount),
+                "PartyA": self.shortcode,
+                "PartyB": phone_number,
+                "Remarks": remarks,
+                "QueueTimeOutURL": self.callback_url,
+                "ResultURL": self.callback_url,
+                "Occasion": "Withdrawal"
+            }
+            
+            # In a real scenario, we would POST this.
+            # For now, return a mock success or specific error about credentials
+            return {"error": "M-Pesa B2C requires Security Credential generation (Certificate)"}
+
+        except Exception as e:
+            return {"error": str(e)}
+
     @action(detail=False, methods=["post"], url_path="stk-push")
     def stk_push(self, request):
         try:

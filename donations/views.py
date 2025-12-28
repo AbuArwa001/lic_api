@@ -148,6 +148,7 @@ class PaymentAccountViewSet(viewsets.ModelViewSet):
     queryset = PaymentAccount.objects.all()
     serializer_class = PaymentAccountSerializer
     permission_classes = [permissions.IsAdminUser]
+    authentication_classes = [JWTAuthentication]
 
     @action(detail=True, methods=['get'])
     def balance(self, request, pk=None):
@@ -190,3 +191,41 @@ class PaymentAccountViewSet(viewsets.ModelViewSet):
             return Response(transactions)
             
         return Response({"error": "Transactions not supported for this account type"}, status=400)
+
+    @action(detail=True, methods=['post'])
+    def withdraw(self, request, pk=None):
+        account = self.get_object()
+        amount = request.data.get('amount')
+        destination = request.data.get('destination') # Phone, Email, or Bank ID (optional for Stripe default)
+        
+        if not amount:
+            return Response({"error": "Amount is required"}, status=400)
+            
+        if account.account_type == 'card': # Stripe
+            client = StripeClient()
+            # Stripe payouts usually go to the default bank account, destination might be ignored or used if multiple
+            result = client.create_payout(amount)
+            if "error" in result:
+                return Response(result, status=400)
+            return Response(result)
+            
+        elif account.account_type == 'paypal':
+            if not destination:
+                 return Response({"error": "Destination email/phone is required for PayPal withdrawal"}, status=400)
+            client = PayPalClient()
+            # Assuming destination is email
+            result = client.create_payout(amount, destination)
+            if "error" in result:
+                return Response(result, status=400)
+            return Response(result)
+            
+        elif account.account_type == 'paybill': # M-Pesa
+            if not destination:
+                 return Response({"error": "Destination phone number is required for M-Pesa withdrawal"}, status=400)
+            client = MpesaClient()
+            result = client.b2c_payment(amount, destination)
+            if "error" in result:
+                return Response(result, status=400)
+            return Response(result)
+            
+        return Response({"error": "Withdrawal not supported for this account type"}, status=400)

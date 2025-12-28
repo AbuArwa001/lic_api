@@ -81,6 +81,42 @@ class PayPalClient:
         except Exception as e:
             return {"error": str(e)}
 
+    def create_payout(self, amount, receiver, receiver_type="EMAIL", currency="USD"):
+        try:
+            token = self.get_access_token()
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {token}",
+            }
+            
+            # PayPal Payouts API
+            payload = {
+                "sender_batch_header": {
+                    "sender_batch_id": f"Payouts_{amount}_{receiver}",
+                    "email_subject": "You have a payout!",
+                    "email_message": "You have received a payout! Thanks for using our service."
+                },
+                "items": [
+                    {
+                        "recipient_type": receiver_type,
+                        "amount": {
+                            "value": str(amount),
+                            "currency": currency
+                        },
+                        "note": "Thanks for your patronage!",
+                        "receiver": receiver,
+                        "sender_item_id": "201403140001",
+                    }
+                ]
+            }
+            
+            response = requests.post(f"{self.base_url}/v1/payments/payouts", json=payload, headers=headers)
+            response.raise_for_status()
+            return response.json()
+            
+        except Exception as e:
+            return {"error": str(e)}
+
     def get_transactions(self, start_date=None, end_date=None):
         try:
             token = self.get_access_token()
