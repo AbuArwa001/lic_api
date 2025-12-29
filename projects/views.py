@@ -5,7 +5,7 @@ from .permissions import IsAdminOrReadOnly, IsAdminUser, AllowAll, IsAuthenticat
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 class ProjectViewSet(viewsets.ModelViewSet):
-    queryset = Project.objects.all()
+    queryset = Project.objects.order_by('-start_date')
     serializer_class = ProjectSerializer
     permission_classes = [AllowAll]
     authentication_classes = [JWTAuthentication] 
