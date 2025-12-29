@@ -30,8 +30,8 @@ class ProjectSerializer(serializers.ModelSerializer):
         
 
     def get_total_donated(self, obj):
-        # Calculate sum dynamically from related donations
-        result = obj.donations.aggregate(total=Sum('amount'))
+        # Calculate sum dynamically from related donations that are 'completed'
+        result = obj.donations.filter(status='completed').aggregate(total=Sum('amount'))
         return result['total'] or 0
 
     def get_progress_percentage(self, obj):
