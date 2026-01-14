@@ -2,15 +2,17 @@ import requests
 import base64
 from datetime import datetime
 from django.conf import settings
-from rest_framework import viewsets
+from adrf import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
+from .models import Donation
 import json
 
 class MpesaClient(viewsets.ViewSet):
     permission_classes = [AllowAny]
     authentication_classes = []
+
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -133,120 +135,132 @@ class MpesaClient(viewsets.ViewSet):
             return {"error": str(e)}
 
     @action(detail=False, methods=["post"], url_path="stk-push")
-    def stk_push(self, request):
+    async def stk_push(self, request):
         try:
             # 1. Get data from request body
+            print(request.data)
             phone_number = request.data.get("phone_number")
             amount = request.data.get("amount")
+            project_id = request.data.get("project")
             account_ref = request.data.get("account_reference", "Donation")
             
-            if not phone_number or not amount:
-                return Response(
-                    {"error": "phone_number and amount are required"},
-                    status=400
-                )
+            if not phone_number or not amount or not project_id:
+                return Response({"error": "phone_number, amount, and project_id are required"}, status=400)
             
-            # 2. Generate M-Pesa Credentials
-            access_token = self.get_access_token()
-            
-            if not access_token:
-                return Response(
-                    {"error": "Failed to get access token from MPESA API"},
-                    status=500
-                )
-            
-            # Format phone number (remove leading 0 if exists, add 254)
+            # Format phone number
+            phone_number = str(phone_number).strip().replace("+", "")
             if phone_number.startswith("0"):
                 phone_number = "254" + phone_number[1:]
-            elif phone_number.startswith("+"):
-                phone_number = phone_number[1:]
             
+            # 2. Authorization
+            access_token = self.get_access_token()
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
             password_str = f"{self.shortcode}{self.passkey}{timestamp}"
             password = base64.b64encode(password_str.encode()).decode()
 
-            # 3. Prepare Payload
+            # 3. Prepare Payload (CustomerPayBillOnline)
             payload = {
                 "BusinessShortCode": self.shortcode,
                 "Password": password,
                 "Timestamp": timestamp,
                 "TransactionType": "CustomerPayBillOnline",
-                "Amount": int(amount),  # Convert to int
+                "Amount": int(float(amount)), 
                 "PartyA": phone_number,
                 "PartyB": self.shortcode,
                 "PhoneNumber": phone_number,
                 "CallBackURL": self.callback_url,
                 "AccountReference": account_ref,
-                "TransactionDesc": "Donation Payment",
+                "TransactionDesc": f"Donation for Project {project_id}",
             }
-            
-            print(f"STK Push Payload: {payload}")
 
-            # 4. Make Request to Safaricom
+            # 4. Make Request
             stk_url = f"{self.base_url}/mpesa/stkpush/v1/processrequest"
-            print(f"Making STK request to: {stk_url}")
-            
             res = requests.post(
                 stk_url,
-                headers={
-                    "Authorization": f"Bearer {access_token}",
-                    "Content-Type": "application/json"
-                },
+                headers={"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"},
                 json=payload,
                 timeout=30
             )
+            res_data = res.json()
             
-            print(f"STK Response Status: {res.status_code}")
-            print(f"STK Response: {res.text}")
+            # 5. Handle Response & Create Record
+            if res.status_code == 200 and res_data.get("ResponseCode") == "0":
+                """
+                    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='donations')
+                    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='donations')
+                    amount = models.DecimalField(max_digits=12, decimal_places=2)
+                    donation_date = models.DateTimeField(auto_now_add=True)
+                    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
+                    is_anonymous = models.BooleanField(default=False)
+                    transaction_id = models.CharField(max_length=100, unique=True, null=True, blank=True)
+                    status = models.CharField(max_length=20, default='pending')
+                """
+                # Save the pending donation using Safaricom's CheckoutRequestID
+                is_anonymous = False if request.user.is_authenticated else True
+                await Donation.objects.acreate(
+                    user=request.user if request.user.is_authenticated else None,
+                    project_id=project_id,
+                    amount=amount,
+                    payment_method="mpesa",
+                    transaction_id=res_data.get("CheckoutRequestID"),
+                    is_anonymous=is_anonymous,
+                    status='pending'
+                )
+                return Response(res_data)
             
-            res.raise_for_status()
-            
-            return Response(res.json())
-            
-        except requests.exceptions.RequestException as e:
-            print(f"STK Request failed: {e}")
-            return Response(
-                {"error": f"MPESA API request failed: {str(e)}"},
-                status=500
-            )
+            return Response({"error": res_data.get("CustomerMessage", "Request failed")}, status=400)
+
         except Exception as e:
-            print(f"Unexpected error in STK push: {e}")
-            return Response(
-                {"error": "Internal server error"},
-                status=500
-            )
-    # Add this to your views.py or mpesa.py
+            return Response({"error": str(e)}, status=500)
+        
 
     @action(detail=False, methods=["post"], url_path="callback")
     def mpesa_callback(self, request):
         """
-        Handle MPESA Callback
+        Handle MPESA Callback (Daraja 3.0)
         """
         try:
-            callback_data = request.data
-            
-            # Log the callback
-            print(f"MPESA Callback received: {callback_data}")
-            
-            # Process the callback
-            result_code = callback_data.get("Body", {}).get("stkCallback", {}).get("ResultCode")
-            
+            stk_callback = request.data.get("Body", {}).get("stkCallback", {})
+            checkout_request_id = stk_callback.get("CheckoutRequestID")
+            result_code = stk_callback.get("ResultCode")
+            result_desc = stk_callback.get("ResultDesc")
+
+            # 1. Find the donation record using the CheckoutRequestID
+            try:
+                donation = Donation.objects.get(transaction_id=checkout_request_id)
+            except Donation.DoesNotExist:
+                print(f"Error: Donation with ID {checkout_request_id} not found.")
+                return Response({"ResultCode": 1, "ResultDesc": "Rejected"})
+
+            # 2. Process Success (ResultCode 0)
             if result_code == 0:
-                # Payment was successful
-                # Extract transaction details
-                callback_metadata = callback_data.get("Body", {}).get("stkCallback", {}).get("CallbackMetadata", {}).get("Item", [])
+                metadata = stk_callback.get("CallbackMetadata", {}).get("Item", [])
                 
-                # Process successful payment
-                print("Payment successful!")
+                # Extract specific values from the metadata list
+                mpesa_receipt = None
+                for item in metadata:
+                    if item.get("Name") == "MpesaReceiptNumber":
+                        mpesa_receipt = item.get("Value")
                 
-                return Response({"result": "success", "message": "Payment processed successfully"})
+                # Update the donation record
+                donation.status = "completed"
+                donation.transaction_id = mpesa_receipt # Switch from Checkout ID to actual Receipt
+                donation.save()
+                
+                print(f"Payment Successful: {mpesa_receipt}")
+                return Response({"ResultCode": 0, "ResultDesc": "Success"})
+
+            # 3. Process Failure (Any other ResultCode)
             else:
-                # Payment failed
-                result_desc = callback_data.get("Body", {}).get("stkCallback", {}).get("ResultDesc", "Payment failed")
-                print(f"Payment failed: {result_desc}")
+                donation.status = "failed"
+                # Optional: store the reason for failure
+                # donation.failure_reason = result_desc 
+                donation.save()
                 
-                return Response({"result": "failed", "message": result_desc})
+                print(f"Payment Failed for {checkout_request_id}: {result_desc}")
+                return Response({"ResultCode": 0, "ResultDesc": "Failure Acknowledged"})
                 
         except Exception as e:
-            print(f"Error processing MPESA callback: {e}")
-            return Response({"error": str(e)}, status=500)
+            print(f"Callback Error: {str(e)}")
+            # M-Pesa expects a 200 OK even on logic errors to stop retrying
+            return Response({"ResultCode": 1, "ResultDesc": "Internal Error"}, status=200)
