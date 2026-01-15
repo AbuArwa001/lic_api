@@ -19,7 +19,8 @@ load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+# Quick-start settings
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # 1. The URL to use when referring to static files
 STATIC_URL = 'static/'
 
