@@ -11,4 +11,5 @@ static
 media
 seed_users.py
 seed_projects.py
-
+data.json
+.DS_Store
