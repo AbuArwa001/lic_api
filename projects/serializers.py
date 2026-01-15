@@ -19,16 +19,19 @@ class ProjectSerializer(serializers.ModelSerializer):
         write_only=True,
         required=False
     )
+    total_donors = serializers.SerializerMethodField()
     
     class Meta:
         model = Project
         fields = [
             'id', 'name', 'goal_amount', 'status', 'description',
             'start_date', 'end_date', 'image', 'images', 'total_donated', 'progress_percentage',
-            'uploaded_images'
+            'uploaded_images', 'total_donors'
         ]
         
-
+    def get_total_donors(self, obj):
+        result = obj.donations.filter(status='completed').values('user').distinct().count()
+        return result
     def get_total_donated(self, obj):
         # Calculate sum dynamically from related donations that are 'completed'
         result = obj.donations.filter(status='completed').aggregate(total=Sum('amount'))
